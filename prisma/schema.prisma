@@ -1,0 +1,37 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Wallet {
+  id        String   @id @default(uuid()) // This is the "Master Key"
+  balance   Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  transactions Transaction[]
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  walletId    String
+  wallet      Wallet   @relation(fields: [walletId], references: [id])
+  type        String   // CASH_IN (Deposit), CASH_OUT (Withdrawal)
+  amount      Float
+  netAmount   Float    // Amount after fees
+  fee         Float    // The 10% fee
+  status      String   // PENDING, COMPLETED, FAILED
+  suitpayId   String?  // ID from SuitPay
+  pixCode     String?  // Copy Paste code for deposits
+  description String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
