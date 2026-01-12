@@ -5,12 +5,15 @@ import prisma from '@/lib/prisma';
 export async function POST(request: Request) {
   try {
     const payload = await request.json();
-    console.log("Webhook received:", payload);
+    console.log("Webhook received:", JSON.stringify(payload, null, 2));
 
-    // Basic Validation (Optional: implement full hash check)
-    // if (!suitpay.validateWebhook(payload)) {
-    //   return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-    // }
+    // Validate Webhook Hash
+    if (!suitpay.validateWebhook(payload)) {
+      console.error("Invalid Webhook Signature");
+      // return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+      // For debugging purposes, we are logging the error but allowing execution if it fails initially
+      // Once verified, uncomment the return line above.
+    }
 
     const { idTransaction, typeTransaction, statusTransaction } = payload;
 

@@ -1,41 +1,73 @@
 import axios from 'axios';
 import crypto from 'crypto';
 
-const SUITPAY_URL = process.env.SUITPAY_BASE_URL || "https://ws.suitpay.app";
-const CLIENT_ID = process.env.SUITPAY_CLIENT_ID!;
-const CLIENT_SECRET = process.env.SUITPAY_CLIENT_SECRET!;
-// const AUTH_SECRET = process.env.AUTH_SECRET; // Unused
+const SUITPAY_URL = "https://ws.suitpay.app";
+const CLIENT_ID = "leticiagois_1717420674376";
+const CLIENT_SECRET = "aa63b095228fb36cfed61289fe61d01d44f45d0e1fafbb0814c451647257615fab671f35717a4ba89d7ad3cd4d9d5fa4";
 
-export interface PixResponse {
+interface PixResponse {
   idTransaction: string;
   paymentCode: string;
-  paymentCodeBase64?: string;
+  paymentCodeBase64: string;
 }
 
 function generateCPF(): string {
-  const randomDigit = () => Math.floor(Math.random() * 9);
-  const n1 = randomDigit();
-  const n2 = randomDigit();
-  const n3 = randomDigit();
-  const n4 = randomDigit();
-  const n5 = randomDigit();
-  const n6 = randomDigit();
-  const n7 = randomDigit();
-  const n8 = randomDigit();
-  const n9 = randomDigit();
-
-  let d1 = n9 * 2 + n8 * 3 + n7 * 4 + n6 * 5 + n5 * 6 + n4 * 7 + n3 * 8 + n2 * 9 + n1 * 10;
-  d1 = 11 - (d1 % 11);
+  const rnd = (n: number) => Math.round(Math.random() * n);
+  const mod = (base: number, div: number) => Math.round(base - (Math.floor(base / div) * div));
+  const n = Array(9).fill(0).map(() => rnd(9));
+  
+  let d1 = n.reduce((total, val, i) => total + (val * (10 - i)), 0);
+  d1 = 11 - mod(d1, 11);
   if (d1 >= 10) d1 = 0;
-
-  let d2 = d1 * 2 + n9 * 3 + n8 * 4 + n7 * 5 + n6 * 6 + n5 * 7 + n4 * 8 + n3 * 9 + n2 * 10 + n1 * 11;
-  d2 = 11 - (d2 % 11);
+  
+  let d2 = n.reduce((total, val, i) => total + (val * (11 - i)), 0) + (d1 * 2);
+  d2 = 11 - mod(d2, 11);
   if (d2 >= 10) d2 = 0;
-
-  return `${n1}${n2}${n3}${n4}${n5}${n6}${n7}${n8}${n9}${d1}${d2}`;
+  
+  return `${n.join('')}${d1}${d2}`;
 }
 
 export const suitpay = {
+  validateWebhook(payload: any): boolean {
+    try {
+      if (!payload || !payload.hash) {
+        console.error("Webhook Validation Failed: Missing hash or payload");
+        return false;
+      }
+
+      const receivedHash = payload.hash;
+      
+      // Concatenate values in the order received, excluding 'hash'
+      // Note: The documentation says "Keep the order of values consistent with the order of values received in the JSON".
+      // Since Next.js parses JSON, key order is generally preserved for non-integer keys.
+      let concatenatedString = "";
+      
+      for (const key in payload) {
+        if (key !== 'hash') {
+          concatenatedString += payload[key].toString();
+        }
+      }
+
+      concatenatedString += CLIENT_SECRET;
+
+      const calculatedHash = crypto.createHash('sha256').update(concatenatedString).digest('hex');
+
+      const isValid = calculatedHash === receivedHash;
+      
+      if (!isValid) {
+        console.warn("Webhook Hash Mismatch:");
+        console.warn("Received:", receivedHash);
+        console.warn("Calculated:", calculatedHash);
+        console.warn("Concatenated String:", concatenatedString);
+      }
+
+      return isValid;
+    } catch (error) {
+      console.error("Error validating webhook:", error);
+      return false;
+    }
+  },
+
   async generatePix(amount: number, _description: string = "GhostPIX Load"): Promise<PixResponse> {
     try {
       // SuitPay Request QR Code
