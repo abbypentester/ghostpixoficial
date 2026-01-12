@@ -2,8 +2,8 @@ import axios from 'axios';
 import crypto from 'crypto';
 
 const SUITPAY_URL = "https://ws.suitpay.app";
-const CLIENT_ID = "leticiagois_1717420674376";
-const CLIENT_SECRET = "aa63b095228fb36cfed61289fe61d01d44f45d0e1fafbb0814c451647257615fab671f35717a4ba89d7ad3cd4d9d5fa4";
+const CLIENT_ID = process.env.SUITPAY_CI || "leticiagois_1717420674376";
+const CLIENT_SECRET = process.env.SUITPAY_CS || "aa63b095228fb36cfed61289fe61d01d44f45d0e1fafbb0814c451647257615fab671f35717a4ba89d7ad3cd4d9d5fa4";
 
 interface PixResponse {
   idTransaction: string;
