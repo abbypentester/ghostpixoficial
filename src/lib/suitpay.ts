@@ -69,18 +69,29 @@ export const suitpay = {
   },
 
   async generatePix(amount: number, _description: string = "GhostPIX Load"): Promise<PixResponse> {
+    const ci = process.env.SUITPAY_CI || CLIENT_ID;
+    const cs = process.env.SUITPAY_CS || CLIENT_SECRET;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+    if (!appUrl) {
+      console.error("CRITICAL: NEXT_PUBLIC_APP_URL is missing. Webhook callbacks will fail.");
+    }
+
     try {
       // SuitPay Request QR Code
       
       const requestNumber = crypto.randomUUID();
+      const callbackUrl = `${appUrl || "https://ghostpix.vercel.app"}/api/webhook/suitpay`;
       
+      console.log(`[SuitPay] Generating PIX. Amount: ${amount}, Callback: ${callbackUrl}`);
+
       const response = await axios.post(
         `${SUITPAY_URL}/api/v1/gateway/request-qrcode`,
         {
           requestNumber: requestNumber,
           dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 day expiry
           amount: amount,
-          callbackUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhook/suitpay`,
+          callbackUrl: callbackUrl,
           client: {
             name: "GhostPIX User",
             document: generateCPF(),
@@ -88,27 +99,30 @@ export const suitpay = {
         },
         {
           headers: {
-            ci: CLIENT_ID,
-            cs: CLIENT_SECRET,
+            ci: ci,
+            cs: cs,
             'Content-Type': 'application/json'
           }
         }
       );
 
       if (response.data && response.data.idTransaction && response.data.paymentCode) {
+        console.log(`[SuitPay] Success. Transaction ID: ${response.data.idTransaction}`);
         return {
           idTransaction: response.data.idTransaction,
           paymentCode: response.data.paymentCode,
           paymentCodeBase64: response.data.paymentCodeBase64
         };
       } else {
+        console.error("[SuitPay] Invalid response format:", response.data);
         throw new Error("Invalid response from SuitPay");
       }
-    } catch (error: unknown) {
+    } catch (error: any) {
       if (axios.isAxiosError(error)) {
-         console.error("SuitPay Generate PIX Error:", error.response?.data || error.message);
+        console.error("[SuitPay] API Error:", error.response?.data || error.message);
+        console.error("[SuitPay] Request Data:", error.config?.data);
       } else {
-         console.error("SuitPay Generate PIX Error:", error);
+        console.error("[SuitPay] Unknown Error:", error);
       }
       throw error;
     }
