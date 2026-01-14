@@ -1,9 +1,7 @@
 import axios from 'axios';
 import crypto from 'crypto';
 
-const SUITPAY_URL = "https://ws.suitpay.app";
-const CLIENT_ID = process.env.SUITPAY_CI || "leticiagois_1717420674376";
-const CLIENT_SECRET = process.env.SUITPAY_CS || "aa63b095228fb36cfed61289fe61d01d44f45d0e1fafbb0814c451647257615fab671f35717a4ba89d7ad3cd4d9d5fa4";
+const SUITPAY_URL = 'https://ws.suitpay.app';
 
 interface PixResponse {
   idTransaction: string;
@@ -13,139 +11,196 @@ interface PixResponse {
 
 function generateCPF(): string {
   const rnd = (n: number) => Math.round(Math.random() * n);
-  const mod = (base: number, div: number) => Math.round(base - (Math.floor(base / div) * div));
-  const n = Array(9).fill(0).map(() => rnd(9));
-  
-  let d1 = n.reduce((total, val, i) => total + (val * (10 - i)), 0);
+  const mod = (base: number, div: number) =>
+    Math.round(base - Math.floor(base / div) * div);
+  const n = Array(9)
+    .fill(0)
+    .map(() => rnd(9));
+
+  let d1 = n.reduce((total, val, i) => total + val * (10 - i), 0);
   d1 = 11 - mod(d1, 11);
   if (d1 >= 10) d1 = 0;
-  
-  let d2 = n.reduce((total, val, i) => total + (val * (11 - i)), 0) + (d1 * 2);
+
+  let d2 =
+    n.reduce((total, val, i) => total + val * (11 - i), 0) + d1 * 2;
   d2 = 11 - mod(d2, 11);
   if (d2 >= 10) d2 = 0;
-  
+
   return `${n.join('')}${d1}${d2}`;
+}
+
+function getCredentials() {
+  const ci = process.env.SUITPAY_CI;
+  const cs = process.env.SUITPAY_CS;
+
+  if (!ci || !cs) {
+    throw new Error('SuitPay credentials not configured (SUITPAY_CI/SUITPAY_CS)');
+  }
+
+  return { ci, cs };
+}
+
+function getAppUrl() {
+  const url = process.env.NEXT_PUBLIC_APP_URL;
+  if (!url) {
+    console.error(
+      'CRITICAL: NEXT_PUBLIC_APP_URL is missing. Using fallback domain for callbacks.'
+    );
+    return 'https://ghostpix.vercel.app';
+  }
+  return url;
 }
 
 export const suitpay = {
   validateWebhook(payload: any): boolean {
     try {
       if (!payload || !payload.hash) {
-        console.error("Webhook Validation Failed: Missing hash or payload");
+        console.error('Webhook Validation Failed: Missing hash or payload');
         return false;
       }
 
       const receivedHash = payload.hash;
-      
-      // Concatenate values in the order received, excluding 'hash'
-      // Note: The documentation says "Keep the order of values consistent with the order of values received in the JSON".
-      // Since Next.js parses JSON, key order is generally preserved for non-integer keys.
-      let concatenatedString = "";
-      
+
+      let concatenatedString = '';
+
       for (const key in payload) {
         if (key !== 'hash') {
-          concatenatedString += payload[key].toString();
+          const value = payload[key];
+          if (value !== null && value !== undefined) {
+            concatenatedString += value.toString();
+          }
         }
       }
 
-      concatenatedString += CLIENT_SECRET;
+      const cs = process.env.SUITPAY_CS;
+      if (!cs) {
+        console.error(
+          'SuitPay webhook validation failed: SUITPAY_CS is not configured'
+        );
+        return false;
+      }
 
-      const calculatedHash = crypto.createHash('sha256').update(concatenatedString).digest('hex');
+      concatenatedString += cs;
+
+      const calculatedHash = crypto
+        .createHash('sha256')
+        .update(concatenatedString)
+        .digest('hex');
 
       const isValid = calculatedHash === receivedHash;
-      
+
       if (!isValid) {
-        console.warn("Webhook Hash Mismatch:");
-        console.warn("Received:", receivedHash);
-        console.warn("Calculated:", calculatedHash);
-        console.warn("Concatenated String:", concatenatedString);
+        console.warn('Webhook Hash Mismatch');
       }
 
       return isValid;
     } catch (error) {
-      console.error("Error validating webhook:", error);
+      console.error('Error validating webhook:', error);
       return false;
     }
   },
 
-  async generatePix(amount: number, _description: string = "GhostPIX Load"): Promise<PixResponse> {
-    const ci = process.env.SUITPAY_CI || CLIENT_ID;
-    const cs = process.env.SUITPAY_CS || CLIENT_SECRET;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  async generatePix(
+    amount: number,
+    _description: string = 'GhostPIX Load'
+  ): Promise<PixResponse> {
+    const { ci, cs } = getCredentials();
+    const appUrl = getAppUrl();
 
-    if (!appUrl) {
-      console.error("CRITICAL: NEXT_PUBLIC_APP_URL is missing. Webhook callbacks will fail.");
+    if (!amount || amount <= 0) {
+      throw new Error('Invalid PIX amount');
     }
 
     try {
-      // SuitPay Request QR Code
-      
       const requestNumber = crypto.randomUUID();
-      const callbackUrl = `${appUrl || "https://ghostpix.vercel.app"}/api/webhook/suitpay`;
-      
-      console.log(`[SuitPay] Generating PIX. Amount: ${amount}, Callback: ${callbackUrl}`);
+      const callbackUrl = `${appUrl}/api/webhook/suitpay`;
+
+      console.log(
+        `[SuitPay] Generating PIX. Amount: ${amount}, Callback: ${callbackUrl}`
+      );
 
       const response = await axios.post(
         `${SUITPAY_URL}/api/v1/gateway/request-qrcode`,
         {
-          requestNumber: requestNumber,
-          dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 day expiry
-          amount: amount,
-          callbackUrl: callbackUrl,
+          requestNumber,
+          dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split('T')[0],
+          amount: Number(amount),
+          callbackUrl,
           client: {
-            name: "GhostPIX User",
-            document: generateCPF(),
+            name: 'GhostPIX User',
+            document: generateCPF()
           }
         },
         {
           headers: {
-            ci: ci,
-            cs: cs,
+            ci,
+            cs,
             'Content-Type': 'application/json'
           }
         }
       );
 
-      if (response.data && response.data.idTransaction && response.data.paymentCode) {
-        console.log(`[SuitPay] Success. Transaction ID: ${response.data.idTransaction}`);
+      if (
+        response.data &&
+        response.data.idTransaction &&
+        response.data.paymentCode
+      ) {
+        console.log(
+          `[SuitPay] Success. Transaction ID: ${response.data.idTransaction}`
+        );
         return {
           idTransaction: response.data.idTransaction,
           paymentCode: response.data.paymentCode,
           paymentCodeBase64: response.data.paymentCodeBase64
         };
-      } else {
-        console.error("[SuitPay] Invalid response format:", response.data);
-        throw new Error("Invalid response from SuitPay");
       }
+
+      console.error('[SuitPay] Invalid response format:', response.data);
+      throw new Error('Invalid response from SuitPay');
     } catch (error: any) {
       if (axios.isAxiosError(error)) {
-        console.error("[SuitPay] API Error:", error.response?.data || error.message);
-        console.error("[SuitPay] Request Data:", error.config?.data);
+        console.error(
+          '[SuitPay] API Error:',
+          error.response?.data || error.message
+        );
       } else {
-        console.error("[SuitPay] Unknown Error:", error);
+        console.error('[SuitPay] Unknown Error:', error);
       }
       throw error;
     }
   },
 
-  async requestWithdrawal(amount: number, key: string, keyType: string, name: string, document: string): Promise<string> {
+  async requestWithdrawal(
+    amount: number,
+    key: string,
+    keyType: string,
+    name: string,
+    document: string
+  ): Promise<string> {
+    const { ci, cs } = getCredentials();
+    const appUrl = getAppUrl();
+
+    if (!amount || amount <= 0) {
+      throw new Error('Invalid withdrawal amount');
+    }
+
     try {
-      // SuitPay Cash Out / Transfer
-      
       const response = await axios.post(
         `${SUITPAY_URL}/api/v1/gateway/pix-payment`,
         {
-          value: amount,
-          key: key,
-          typeKey: keyType, 
-          callbackUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhook/suitpay`,
-          document: document,
-          name: name
+          value: Number(amount),
+          key,
+          typeKey: keyType,
+          callbackUrl: `${appUrl}/api/webhook/suitpay`,
+          document,
+          name
         },
         {
           headers: {
-            ci: CLIENT_ID,
-            cs: CLIENT_SECRET,
+            ci,
+            cs,
             'Content-Type': 'application/json'
           }
         }
@@ -154,25 +209,22 @@ export const suitpay = {
       if (response.data && response.data.idTransaction) {
         return response.data.idTransaction;
       }
-      
-      // If success but no ID (some async flows)
+
       if (response.status === 200) {
-        return "PENDING";
+        return 'PENDING';
       }
-      
-      throw new Error("Failed to request withdrawal");
+
+      throw new Error('Failed to request withdrawal');
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
-        console.error("SuitPay Withdrawal Error:", error.response?.data || error.message);
+        console.error(
+          'SuitPay Withdrawal Error:',
+          error.response?.data || error.message
+        );
       } else {
-        console.error("SuitPay Withdrawal Error:", error);
+        console.error('SuitPay Withdrawal Error:', error);
       }
       throw error;
     }
-  },
-  
-  // validateWebhook(payload: any): boolean {
-  //   // Implement signature check if SuitPay provides a secret or hash
-  //   return true;
-  // }
+  }
 };
