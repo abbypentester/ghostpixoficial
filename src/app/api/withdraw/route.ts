@@ -98,15 +98,10 @@ export async function POST(request: Request) {
     });
 
     try {
-      const destinationName = name || 'Ghost User';
-      const destinationDoc = document || '00000000000';
-
       const suitpayId = await suitpay.requestWithdrawal(
         netAmount,
         finalPixKey,
-        finalPixKeyType,
-        destinationName,
-        destinationDoc
+        finalPixKeyType
       );
 
       await prisma.transaction.update({

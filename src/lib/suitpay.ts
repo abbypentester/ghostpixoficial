@@ -175,9 +175,7 @@ export const suitpay = {
   async requestWithdrawal(
     amount: number,
     key: string,
-    keyType: string,
-    name: string,
-    document: string
+    keyType: string
   ): Promise<string> {
     const { ci, cs } = getCredentials();
     const appUrl = getAppUrl();
@@ -187,16 +185,15 @@ export const suitpay = {
     }
 
     try {
+      const payload = {
+        value: Number(amount),
+        key,
+        typeKey: keyType
+      };
+
       const response = await axios.post(
         `${SUITPAY_URL}/api/v1/gateway/pix-payment`,
-        {
-          value: Number(amount),
-          key,
-          typeKey: keyType,
-          callbackUrl: `${appUrl}/api/webhook/suitpay`,
-          document,
-          name
-        },
+        payload,
         {
           headers: {
             ci,
