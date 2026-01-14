@@ -159,10 +159,10 @@ export default function Dashboard() {
       setWithdrawMsg({ type: 'error', text: 'Preencha valor e chave PIX' });
       return;
     }
-    if (Number(withdrawAmount) < 5) {
+    if (Number(withdrawAmount) < 4) {
       setWithdrawMsg({
         type: 'error',
-        text: 'Valor mínimo para saque é R$ 5,00'
+        text: 'Valor mínimo para saque é R$ 4,00'
       });
       return;
     }
@@ -617,7 +617,7 @@ export default function Dashboard() {
                     className="w-full bg-black border border-gray-700 rounded-lg p-3 text-white focus:border-green-500 focus:outline-none transition"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Limite: R$ 150,00/hora. Saque mínimo: R$ 5,00. Taxa: R$ 3,00 + 15% sobre o valor do saque.
+                    Limite: R$ 150,00/hora. Saque mínimo: R$ 4,00. Taxa: R$ 3,00 + 15% sobre o valor do saque.
                   </p>
                 </div>
 

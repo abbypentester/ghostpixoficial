@@ -66,7 +66,7 @@ export default function Home() {
             <span className="text-xs font-semibold text-purple-300 tracking-wide uppercase">Privacidade Absoluta</span>
           </div>
           
-          <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight mb-6">
+          <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight mb-6">
             O Gateway PIX <br/>
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-indigo-400 to-blue-400">
               Invisível & Anônimo

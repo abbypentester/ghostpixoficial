@@ -36,9 +36,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (amountNum < 5) {
+    if (amountNum < 4) {
       return NextResponse.json(
-        { error: 'Valor mínimo para saque é R$ 5,00' },
+        { error: 'Valor mínimo para saque é R$ 4,00' },
         { status: 400 }
       );
     }
