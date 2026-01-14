@@ -185,10 +185,24 @@ export const suitpay = {
     }
 
     try {
+      const normalizedTypeKey =
+        keyType === 'CPF' || keyType === 'CNPJ'
+          ? 'document'
+          : keyType === 'PHONE'
+          ? 'phoneNumber'
+          : keyType === 'EMAIL'
+          ? 'email'
+          : keyType === 'RANDOM_KEY'
+          ? 'randomKey'
+          : keyType === 'PAYMENT_CODE'
+          ? 'paymentCode'
+          : keyType;
+
       const payload = {
         value: Number(amount),
         key,
-        typeKey: keyType
+        typeKey: normalizedTypeKey,
+        callbackUrl: `${appUrl}/api/webhook/suitpay`
       };
 
       const response = await axios.post(
