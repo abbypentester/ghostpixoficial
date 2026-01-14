@@ -36,6 +36,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (amountNum < 1) {
+      return NextResponse.json(
+        { error: 'Valor mínimo para saque é R$ 1,00' },
+        { status: 400 }
+      );
+    }
+
     const wallet = await prisma.wallet.findUnique({
       where: { id: walletId }
     });
