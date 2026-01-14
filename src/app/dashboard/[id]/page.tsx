@@ -51,6 +51,47 @@ export default function Dashboard() {
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawMsg, setWithdrawMsg] = useState<{type: 'success'|'error', text: string} | null>(null);
 
+  const totalCashIn = wallet?.transactions
+    .filter((tx) => tx.type === 'CASH_IN')
+    .reduce((sum, tx) => sum + tx.amount, 0) ?? 0;
+
+  const totalCashOut = wallet?.transactions
+    .filter((tx) => tx.type === 'CASH_OUT')
+    .reduce((sum, tx) => sum + tx.amount, 0) ?? 0;
+
+  const withdrawPreviewAmount = Number(withdrawAmount || 0);
+  const withdrawNetAmount = withdrawPreviewAmount > 0 ? withdrawPreviewAmount * 0.85 : 0;
+
+  const getStatusConfig = (status: string) => {
+    const normalized = status.toUpperCase();
+
+    if (normalized === 'PENDING') {
+      return {
+        label: 'Pendente',
+        classes: 'bg-yellow-500/10 text-yellow-300 border-yellow-500/30'
+      };
+    }
+
+    if (normalized === 'COMPLETED' || normalized === 'APPROVED' || normalized === 'PAID') {
+      return {
+        label: 'Concluída',
+        classes: 'bg-green-500/10 text-green-300 border-green-500/30'
+      };
+    }
+
+    if (normalized === 'FAILED' || normalized === 'CANCELED' || normalized === 'ERROR') {
+      return {
+        label: 'Falhada',
+        classes: 'bg-red-500/10 text-red-300 border-red-500/30'
+      };
+    }
+
+    return {
+      label: status,
+      classes: 'bg-gray-500/10 text-gray-300 border-gray-500/30'
+    };
+  };
+
   const fetchWallet = useCallback(async () => {
     try {
       const res = await axios.get(`/api/wallet/${walletId}`);
@@ -155,39 +196,78 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-950 text-white font-sans">
       {/* Header */}
-      <header className="border-b border-gray-800 bg-black/50 backdrop-blur-md sticky top-0 z-10">
+      <header className="border-b border-gray-800 bg-black/70 backdrop-blur-md sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                <span className="font-bold text-black">G</span>
+              <div className="w-9 h-9 bg-gradient-to-br from-green-500 to-emerald-400 rounded-xl flex items-center justify-center">
+                <span className="font-extrabold text-black text-lg">G</span>
               </div>
-              <span className="font-bold text-xl tracking-tight hidden sm:block">GhostPIX</span>
+              <div className="hidden sm:flex flex-col">
+                <span className="font-semibold text-lg leading-tight">GhostPIX</span>
+                <span className="text-[11px] text-gray-400 leading-tight">
+                  Carteira PIX anônima e instantânea
+                </span>
+              </div>
             </Link>
           </div>
           
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <p className="text-xs text-gray-500 uppercase tracking-wider">Saldo Atual</p>
-              <p className="text-xl font-bold text-green-400">
+              <p className="text-[11px] text-gray-500 uppercase tracking-[0.15em]">
+                Saldo disponível
+              </p>
+              <p className="text-xl font-semibold text-green-400">
                 R$ {wallet.balance.toFixed(2)}
               </p>
             </div>
             <button 
               onClick={() => fetchWallet()}
-              className="p-2 hover:bg-gray-800 rounded-full transition"
-              title="Atualizar"
+              className="p-2 hover:bg-gray-900 rounded-full transition border border-gray-800"
+              title="Atualizar saldo"
             >
-              <RefreshCw className="h-5 w-5 text-gray-400" />
+              <RefreshCw className="h-5 w-5 text-gray-300" />
             </button>
-            <Link href="/" className="p-2 hover:bg-gray-800 rounded-full transition" title="Sair">
-              <LogOut className="h-5 w-5 text-gray-400" />
+            <Link
+              href="/"
+              className="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-full border border-gray-800 text-xs text-gray-300 hover:bg-gray-900 transition"
+              title="Sair da carteira"
+            >
+              <LogOut className="h-4 w-4" />
+              Sair
             </Link>
           </div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        <section className="bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-medium text-green-400 uppercase tracking-[0.2em] mb-1">
+              Sua carteira GhostPIX
+            </p>
+            <h1 className="text-2xl sm:text-3xl font-semibold mb-2">
+              Controle total do seu saldo em segundos
+            </h1>
+            <p className="text-sm text-gray-400 max-w-md">
+              Gere cobranças PIX, receba pagamentos e saque para qualquer chave
+              com segurança e sem burocracia.
+            </p>
+          </div>
+          <div className="w-full sm:w-auto">
+            <div className="bg-black/60 border border-green-500/40 rounded-xl px-4 py-3 text-right shadow-lg">
+              <p className="text-[11px] text-gray-400 uppercase tracking-[0.18em]">
+                Saldo disponível
+              </p>
+              <p className="text-2xl sm:text-3xl font-bold text-green-400">
+                R$ {wallet.balance.toFixed(2)}
+              </p>
+              <p className="text-[11px] text-gray-500 mt-1">
+                Atualizado automaticamente a cada 10 segundos
+              </p>
+            </div>
+          </div>
+        </section>
         
         {/* Wallet ID Warning */}
         {isNew && (
@@ -219,6 +299,40 @@ export default function Dashboard() {
           <p className="text-gray-400 text-sm mb-1">Saldo Disponível</p>
           <p className="text-3xl font-bold text-green-400">R$ {wallet.balance.toFixed(2)}</p>
         </div>
+
+        <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+            <p className="text-[11px] text-gray-500 uppercase tracking-[0.18em] mb-1">
+              Entradas
+            </p>
+            <p className="text-lg font-semibold text-green-400">
+              R$ {totalCashIn.toFixed(2)}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Total recebido via PIX nesta carteira
+            </p>
+          </div>
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+            <p className="text-[11px] text-gray-500 uppercase tracking-[0.18em] mb-1">
+              Saques
+            </p>
+            <p className="text-lg font-semibold text-red-400">
+              R$ {totalCashOut.toFixed(2)}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Total já solicitado em cash-out
+            </p>
+          </div>
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center gap-3">
+            <Shield className="h-6 w-6 text-green-500 shrink-0" />
+            <div>
+              <p className="text-sm font-medium">Segurança primeiro</p>
+              <p className="text-xs text-gray-500">
+                PIX processado pela SuitPay e carteira anônima, sem burocracia.
+              </p>
+            </div>
+          </div>
+        </section>
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
@@ -262,10 +376,13 @@ export default function Dashboard() {
           {/* OVERVIEW TAB */}
           {activeTab === 'overview' && (
             <div>
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
                 <Clock className="h-5 w-5 text-green-500" />
                 Histórico de Transações
               </h2>
+              <p className="text-sm text-gray-400 mb-4">
+                Acompanhe tudo o que entrou e saiu da sua carteira em tempo real.
+              </p>
               
               {wallet.transactions.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
@@ -274,7 +391,10 @@ export default function Dashboard() {
               ) : (
                 <div className="space-y-3">
                   {wallet.transactions.map((tx) => (
-                    <div key={tx.id} className="bg-black/30 p-4 rounded-lg border border-gray-800 flex justify-between items-center">
+                    <div
+                      key={tx.id}
+                      className="bg-black/30 p-4 rounded-lg border border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
                       <div className="flex items-center gap-3">
                         {tx.type === 'CASH_IN' ? (
                           <div className="p-2 bg-green-900/30 rounded-full">
@@ -292,6 +412,9 @@ export default function Dashboard() {
                           <p className="text-xs text-gray-500">
                             {new Date(tx.createdAt).toLocaleString('pt-BR')}
                           </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Líquido: R$ {tx.netAmount.toFixed(2)} • Taxa: R$ {(tx.amount - tx.netAmount).toFixed(2)}
+                          </p>
                         </div>
                       </div>
                       <div className="text-right">
@@ -300,9 +423,18 @@ export default function Dashboard() {
                         }`}>
                           {tx.type === 'CASH_IN' ? '+' : '-'} R$ {tx.amount.toFixed(2)}
                         </p>
-                        <p className="text-xs text-gray-500">
-                          {tx.status}
-                        </p>
+                        <div className="mt-1 flex justify-end">
+                          {(() => {
+                            const config = getStatusConfig(tx.status);
+                            return (
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-1 text-[11px] border ${config.classes}`}
+                              >
+                                {config.label}
+                              </span>
+                            );
+                          })()}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -314,7 +446,11 @@ export default function Dashboard() {
           {/* DEPOSIT TAB */}
           {activeTab === 'deposit' && (
             <div className="max-w-md mx-auto">
-              <h2 className="text-xl font-bold mb-6 text-center">Gerar Cobrança PIX</h2>
+              <h2 className="text-xl font-bold mb-2 text-center">Receber via PIX</h2>
+              <p className="text-sm text-gray-400 text-center mb-6">
+                Informe o valor, gere o QR Code e envie o código de pagamento
+                para o seu cliente em poucos segundos.
+              </p>
               
               <div className="space-y-4">
                 <div>
@@ -326,7 +462,9 @@ export default function Dashboard() {
                     placeholder="0.00"
                     className="w-full bg-black border border-gray-700 rounded-lg p-3 text-white focus:border-green-500 focus:outline-none transition"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Taxa de serviço: 10% será descontado do valor recebido.</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Taxa de serviço: 15% será descontado do valor recebido.
+                  </p>
                 </div>
 
                 <button
@@ -373,8 +511,16 @@ export default function Dashboard() {
                       <Copy className="h-4 w-4" />
                     </button>
                   </div>
+                  <p className="mt-3 text-xs text-gray-500 text-center">
+                    Use o botão de copiar para enviar o código PIX por mensagem ou e-mail.
+                  </p>
                 </div>
               )}
+
+              <div className="mt-6 flex items-center justify-center gap-2 text-xs text-gray-500">
+                <Shield className="h-4 w-4 text-green-500" />
+                <span>Transações processadas pela SuitPay, com padrão de segurança bancária.</span>
+              </div>
             </div>
           )}
 
@@ -382,6 +528,28 @@ export default function Dashboard() {
           {activeTab === 'withdraw' && (
             <div className="max-w-md mx-auto">
               <h2 className="text-xl font-bold mb-6 text-center">Realizar Saque</h2>
+
+              <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                  <p className="text-[11px] text-gray-500 uppercase tracking-[0.18em] mb-1">
+                    Saldo disponível
+                  </p>
+                  <p className="text-lg font-semibold text-green-400">
+                    R$ {wallet.balance.toFixed(2)}
+                  </p>
+                </div>
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                  <p className="text-[11px] text-gray-500 uppercase tracking-[0.18em] mb-1">
+                    Você recebe líquido (aprox.)
+                  </p>
+                  <p className="text-lg font-semibold text-white">
+                    R$ {withdrawNetAmount.toFixed(2)}
+                  </p>
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Considerando taxa de 15% sobre o valor do saque
+                  </p>
+                </div>
+              </div>
               
               {withdrawMsg && (
                 <div className={`p-4 rounded-lg mb-6 flex items-center gap-3 ${
@@ -404,7 +572,9 @@ export default function Dashboard() {
                     placeholder="0.00"
                     className="w-full bg-black border border-gray-700 rounded-lg p-3 text-white focus:border-green-500 focus:outline-none transition"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Limite: R$ 150,00/hora. Taxa: 10%.</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Limite: R$ 150,00/hora. Taxa: 15% sobre o valor do saque.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
