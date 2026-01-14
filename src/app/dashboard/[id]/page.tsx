@@ -59,8 +59,25 @@ export default function Dashboard() {
     .filter((tx) => tx.type === 'CASH_OUT')
     .reduce((sum, tx) => sum + tx.amount, 0) ?? 0;
 
+  const depositPreviewAmount = Number(depositAmount || 0);
+  const depositFee =
+    depositPreviewAmount > 0
+      ? 1 + depositPreviewAmount * 0.15
+      : 0;
+  const depositNetAmount =
+    depositPreviewAmount > 0
+      ? depositPreviewAmount - depositFee
+      : 0;
+
   const withdrawPreviewAmount = Number(withdrawAmount || 0);
-  const withdrawNetAmount = withdrawPreviewAmount > 0 ? withdrawPreviewAmount * 0.85 : 0;
+  const withdrawFee =
+    withdrawPreviewAmount > 0
+      ? 3 + withdrawPreviewAmount * 0.15
+      : 0;
+  const withdrawNetAmount =
+    withdrawPreviewAmount > 0
+      ? withdrawPreviewAmount - withdrawFee
+      : 0;
 
   const getStatusConfig = (status: string) => {
     const normalized = status.toUpperCase();
@@ -113,6 +130,10 @@ export default function Dashboard() {
 
   const handleGeneratePix = async () => {
     if (!depositAmount || Number(depositAmount) <= 0) return;
+    if (Number(depositAmount) < 2) {
+      alert('Valor mínimo para depósito é R$ 2,00');
+      return;
+    }
     setGeneratingPix(true);
     setGeneratedPix(null);
     try {
@@ -136,6 +157,13 @@ export default function Dashboard() {
     setWithdrawMsg(null);
     if (!withdrawAmount || !pixKey) {
       setWithdrawMsg({ type: 'error', text: 'Preencha valor e chave PIX' });
+      return;
+    }
+    if (Number(withdrawAmount) < 5) {
+      setWithdrawMsg({
+        type: 'error',
+        text: 'Valor mínimo para saque é R$ 5,00'
+      });
       return;
     }
     setWithdrawing(true);
@@ -463,13 +491,24 @@ export default function Dashboard() {
                     className="w-full bg-black border border-gray-700 rounded-lg p-3 text-white focus:border-green-500 focus:outline-none transition"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Taxa de serviço: 15% será descontado do valor recebido.
+                    Taxa de serviço: R$ 1,00 + 15% sobre o valor recebido. Depósito mínimo: R$ 2,00.
                   </p>
+                  {depositPreviewAmount > 0 && (
+                    <div className="mt-3 bg-black/40 border border-gray-800 rounded-lg p-3 text-xs text-gray-300 space-y-1">
+                      <p>Você está cobrando: R$ {depositPreviewAmount.toFixed(2)}</p>
+                      <p>Taxa total: R$ {depositFee.toFixed(2)}</p>
+                      <p>Você receberá líquido: R$ {depositNetAmount.toFixed(2)}</p>
+                    </div>
+                  )}
                 </div>
 
                 <button
                   onClick={handleGeneratePix}
-                  disabled={generatingPix || !depositAmount}
+                  disabled={
+                    generatingPix ||
+                    !depositAmount ||
+                    depositPreviewAmount < 2
+                  }
                   className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold transition flex items-center justify-center gap-2"
                 >
                   {generatingPix ? (
@@ -546,8 +585,13 @@ export default function Dashboard() {
                     R$ {withdrawNetAmount.toFixed(2)}
                   </p>
                   <p className="text-[11px] text-gray-500 mt-1">
-                    Considerando taxa de 15% sobre o valor do saque
+                    Considerando taxa de R$ 3,00 + 15% sobre o valor do saque
                   </p>
+                  {withdrawPreviewAmount > 0 && (
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      Taxa estimada: R$ {withdrawFee.toFixed(2)}
+                    </p>
+                  )}
                 </div>
               </div>
               
@@ -573,7 +617,7 @@ export default function Dashboard() {
                     className="w-full bg-black border border-gray-700 rounded-lg p-3 text-white focus:border-green-500 focus:outline-none transition"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Limite: R$ 150,00/hora. Taxa: 15% sobre o valor do saque.
+                    Limite: R$ 150,00/hora. Saque mínimo: R$ 5,00. Taxa: R$ 3,00 + 15% sobre o valor do saque.
                   </p>
                 </div>
 

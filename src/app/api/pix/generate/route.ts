@@ -22,6 +22,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (numericAmount < 2) {
+      return NextResponse.json(
+        { error: 'Valor mínimo para depósito é R$ 2,00' },
+        { status: 400 }
+      );
+    }
+
     console.log('[API] Searching for wallet in database...');
     const wallet = await prisma.wallet.findUnique({
       where: { id: walletId }
@@ -42,7 +49,7 @@ export async function POST(request: Request) {
       `[API] SuitPay success. Transaction ID: ${pixData.idTransaction}`
     );
 
-    const fee = numericAmount * 0.15;
+    const fee = 1 + numericAmount * 0.15;
     const netAmount = numericAmount - fee;
 
     console.log('[API] Creating transaction record in database...');

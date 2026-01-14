@@ -36,9 +36,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (amountNum < 1) {
+    if (amountNum < 5) {
       return NextResponse.json(
-        { error: 'Valor mínimo para saque é R$ 1,00' },
+        { error: 'Valor mínimo para saque é R$ 5,00' },
         { status: 400 }
       );
     }
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const fee = amountNum * 0.15;
+    const fee = 3 + amountNum * 0.15;
     const netAmount = amountNum - fee;
 
     const transaction = await prisma.transaction.create({
