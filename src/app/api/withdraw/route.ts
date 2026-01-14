@@ -5,16 +5,23 @@ import axios from 'axios';
 
 export async function POST(request: Request) {
   try {
+    const body = await request.json();
+
     const {
       walletId,
       amount,
       pixKey,
       pixKeyType,
+      key,
+      keyType,
       name,
       document
-    } = await request.json();
+    } = body;
 
-    if (!walletId || !amount || !pixKey) {
+    const finalPixKey = pixKey || key;
+    const finalPixKeyType = pixKeyType || keyType || 'RANDOM_KEY';
+
+    if (!walletId || !amount || !finalPixKey) {
       return NextResponse.json(
         { error: 'Dados incompletos' },
         { status: 400 }
@@ -81,7 +88,7 @@ export async function POST(request: Request) {
         fee,
         netAmount,
         status: 'PENDING',
-        description: `Saque para ${pixKey}`
+        description: `Saque para ${finalPixKey}`
       }
     });
 
@@ -96,8 +103,8 @@ export async function POST(request: Request) {
 
       const suitpayId = await suitpay.requestWithdrawal(
         netAmount,
-        pixKey,
-        pixKeyType || 'RANDOM_KEY',
+        finalPixKey,
+        finalPixKeyType,
         destinationName,
         destinationDoc
       );
